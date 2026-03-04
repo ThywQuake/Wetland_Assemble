@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.venv/
+env/
+venv/
+.env
+
+# Data (Crucial: protect large research data)
+data/raw/
+data/processed/
+data/results/
+*.tif
+*.nc
+*.zip
+*.tar.gz
+
+# IDEs
+.DS_Store
+.vscode/
+.idea/
+
+# Jupyter
+.ipynb_checkpoints
+*-checkpoint.ipynb
+
+# Project specific
+compound-engineering.local.md
+todos/
+docs/plans/
+docs/brainstorms/
