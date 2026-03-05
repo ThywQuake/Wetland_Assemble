@@ -6,9 +6,30 @@
 
 ## 🏗 核心架构与模块详解
 
-项目代码位于 `src/wetland_analysis/`，采用模块化设计，确保科研计算的可复用性。
+项目代码遵循标准科研工程布局，结构如下：
 
-### 1. 数据管理模块 (`data/`)
+```text
+/
+├── config/              # 配置文件 (datasets.yaml, etc.)
+├── data/                # 数据目录 (raw, processed, results)
+├── docs/                # 文档目录
+│   ├── brainstorms/     # 脑暴文档
+│   ├── datasets/        # 数据集背景资料与说明
+│   ├── guides/          # 远程设置与风格指南
+│   └── plans/           # 实施计划
+├── notebooks/           # 交互式 Jupyter Notebooks (01-04)
+├── scripts/             # 自动化验证与运维脚本
+├── src/                 # 核心算法库
+│   └── wetland_analysis/
+│       ├── analysis/    # 湿地集成、不确定性与精度评估逻辑
+│       ├── data/        # 数据加载、配置解析与 GEE 数据获取
+│       ├── utils/       # MGRS 切片系统与空间地理对齐工具
+│       └── visualization/ # 论文级制图与统计图表
+├── tests/               # 自动化单元测试
+└── pyproject.toml       # 依赖管理
+```
+
+### 1. 数据管理模块 (`src/wetland_analysis/data/`)
 负责异构数据的统一加载与遥感影像抓取。
 
 *   **`loader.py`**: 核心加载器。
