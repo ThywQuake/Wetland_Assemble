@@ -48,126 +48,109 @@ def get_dataset_info(dataset_name: str) -> Dict:
     return datasets[dataset_name]
 
 
+import xarray as xr
+import rasterio
+import rioxarray
+import geopandas as gpd
+import numpy as np
+import yaml
+import os
+import glob
+from pathlib import Path
+from typing import Dict, List, Optional, Union, Tuple
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Standard coordinate names for consistency
+COORD_MAP = {
+    'latitude': 'lat',
+    'longitude': 'lon',
+    'Latitude': 'lat',
+    'Longitude': 'lon',
+    'y': 'lat',
+    'x': 'lon'
+}
+
+def _standardize_coords(ds: Union[xr.Dataset, xr.DataArray]) -> Union[xr.Dataset, xr.DataArray]:
+    """Ensure dimensions are consistently named 'lat' and 'lon'."""
+    rename_dict = {old: new for old, new in COORD_MAP.items() if old in ds.dims}
+    if rename_dict:
+        logger.debug(f"Standardizing coordinates: {rename_dict}")
+        ds = ds.rename(rename_dict)
+    return ds
+
 def load_wetland_dataset(
     dataset_name: str,
     year: Optional[int] = None,
     month: Optional[int] = None,
-    region: Optional[str] = None,
     variables: Optional[List[str]] = None
 ) -> Union[xr.Dataset, xr.DataArray]:
     """
-    Load a wetland dataset.
-
-    Parameters
-    ----------
-    dataset_name : str
-        Name of the dataset (e.g., 'gwd30', 'giems_mc')
-    year : int, optional
-        Year for time-series datasets
-    month : int, optional
-        Month for monthly datasets
-    region : str, optional
-        Region name from configuration
-    variables : list of str, optional
-        Specific variables to load
-
-    Returns
-    -------
-    xr.Dataset or xr.DataArray
-        Loaded dataset
+    Robustly load a wetland dataset with coordinate standardization and 
+    flexible file searching.
     """
-    dataset_info = get_dataset_info(dataset_name)
-    data_format = dataset_info.get('format', '').lower()
+    from .config import load_dataset_config
+    config = load_dataset_config()
+    dataset_info = config['datasets'].get(dataset_name.lower())
+    
+    if not dataset_info:
+        raise ValueError(f"Dataset {dataset_name} not defined in config.")
 
-    # Get dataset path (user needs to update config with actual paths)
-    base_path = dataset_info.get('path', '')
-    if base_path == '/path/to/data/':
-        raise ValueError(
-            f"Dataset path not configured for {dataset_name}. "
-            f"Please update {_CONFIG_PATH} with actual data paths."
-        )
+    data_format = dataset_info.get('format', '').lower()
+    base_path = Path(dataset_info['path'])
 
     if data_format == 'netcdf':
-        return _load_netcdf_dataset(dataset_info, year, month, variables)
+        data = _load_netcdf_robust(base_path, dataset_info, year, month, variables)
     elif data_format == 'geotiff':
-        return _load_geotiff_dataset(dataset_info, year, month)
+        data = _load_geotiff_robust(base_path, dataset_info, year, month)
     else:
         raise ValueError(f"Unsupported format: {data_format}")
 
+    return _standardize_coords(data)
 
-def _load_netcdf_dataset(
-    dataset_info: Dict,
-    year: Optional[int] = None,
-    month: Optional[int] = None,
-    variables: Optional[List[str]] = None
-) -> xr.Dataset:
-    """Load NetCDF dataset."""
-    base_path = dataset_info['path']
-
-    # Handle different NetCDF file patterns
-    if 'file' in dataset_info:
-        # Single file dataset
-        file_path = Path(base_path) / dataset_info['file']
-        ds = xr.open_dataset(file_path)
-    elif 'pattern' in dataset_info:
-        # Multiple files with pattern
-        pattern = dataset_info['pattern']
-        if year and month:
-            # Replace placeholders in pattern
-            pattern = pattern.replace('{year}', str(year))
-            pattern = pattern.replace('{month}', f'{month:02d}')
-        elif year:
-            pattern = pattern.replace('{year}', str(year))
-
-        file_path = Path(base_path) / pattern
-        ds = xr.open_mfdataset(str(file_path), combine='by_coords')
+def _load_netcdf_robust(base_path: Path, info: Dict, year: int, month: int, variables: List[str]) -> xr.Dataset:
+    pattern = info.get('pattern', '*.nc')
+    
+    # Handle nested SWAMPS-like structure: YYYY/MM/*.nc
+    if year and month:
+        search_path = base_path / f"{year}" / f"{month:02d}" / pattern.replace('{year}', str(year)).replace('{month}', f'{month:02d}')
+    elif year:
+        search_path = base_path / f"{year}" / "**" / pattern.replace('{year}', str(year))
     else:
-        raise ValueError("NetCDF dataset configuration must include 'file' or 'pattern'")
+        search_path = base_path / "**" / pattern
 
-    # Select specific variables if requested
+    files = glob.glob(str(search_path), recursive=True)
+    if not files:
+        # Fallback to direct path if pattern parsing fails
+        if 'file' in info:
+            files = [str(base_path / info['file'])]
+        else:
+            raise FileNotFoundError(f"No files found for {info['name']} at {search_path}")
+
+    logger.info(f"Loading {len(files)} files for {info['name']}")
+    ds = xr.open_mfdataset(files, combine='by_coords', chunks={'lat': 1000, 'lon': 1000})
+    
     if variables:
-        available_vars = list(ds.data_vars)
-        missing = [v for v in variables if v not in available_vars]
-        if missing:
-            logger.warning(f"Variables not found: {missing}")
         ds = ds[variables]
-
     return ds
 
-
-def _load_geotiff_dataset(
-    dataset_info: Dict,
-    year: Optional[int] = None,
-    month: Optional[int] = None
-) -> xr.DataArray:
-    """Load GeoTIFF dataset."""
-    base_path = dataset_info['path']
-
-    # Handle different GeoTIFF file patterns
-    if 'files' in dataset_info:
-        # Multiple files defined
-        if 'wetland' in dataset_info['files']:
-            file_path = Path(base_path) / dataset_info['files']['wetland']
-        else:
-            # Use first available file
-            first_file = list(dataset_info['files'].values())[0]
-            file_path = Path(base_path) / first_file
-    elif 'pattern' in dataset_info:
-        # Pattern-based files
-        pattern = dataset_info['pattern']
-        if year:
-            pattern = pattern.replace('{year}', str(year))
-        file_path = Path(base_path) / pattern
+def _load_geotiff_robust(base_path: Path, info: Dict, year: int, month: int) -> xr.DataArray:
+    # GWD30 annual pattern or static files
+    if 'pattern' in info and year:
+        file_path = str(base_path / info['pattern'].replace('{year}', str(year)))
+    elif 'files' in info:
+        file_key = 'wetland' if 'wetland' in info['files'] else list(info['files'].keys())[0]
+        file_path = str(base_path / info['files'][file_key])
     else:
-        raise ValueError("GeoTIFF dataset configuration must include 'files' or 'pattern'")
+        # Just find any tif in the directory
+        files = list(base_path.glob("*.tif"))
+        if not files: raise FileNotFoundError(f"No TIFF files in {base_path}")
+        file_path = str(files[0])
 
-    # Use rioxarray to open GeoTIFF
-    da = rioxarray.open_rasterio(file_path)
-
-    # Squeeze band dimension if it's 1
-    if da.shape[0] == 1:
-        da = da.squeeze('band')
-
+    da = rioxarray.open_rasterio(file_path, chunks=True)
+    if da.ndim > 2:
+        da = da.squeeze()
     return da
 
 
