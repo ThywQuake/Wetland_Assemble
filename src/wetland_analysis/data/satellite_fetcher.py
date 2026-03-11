@@ -8,19 +8,31 @@ import os
 from typing import List, Tuple, Dict, Any, Optional
 from pathlib import Path
 import logging
+from .config import load_gee_config
 
 logger = logging.getLogger(__name__)
 
 class GEEFetcher:
     """
     Fetcher for Sentinel-2 and Landsat-8/9 data from GEE.
-    Requires GEE_PROJECT_ID environment variable.
+    Loads project ID from config/gee_config.yaml or GEE_PROJECT_ID environment variable.
     """
     
     def __init__(self, project_id: Optional[str] = None):
-        self.project_id = project_id or os.getenv("GEE_PROJECT_ID")
+        # 1. User provided ID
+        self.project_id = project_id
+        
+        # 2. Environment variable
         if not self.project_id:
-            raise ValueError("GEE_PROJECT_ID must be set.")
+            self.project_id = os.getenv("GEE_PROJECT_ID")
+            
+        # 3. Config file
+        if not self.project_id:
+            gee_config = load_gee_config()
+            self.project_id = gee_config.get("gee_project_id")
+            
+        if not self.project_id:
+            raise ValueError("GEE Project ID not found. Set 'gee_project_id' in config/gee_config.yaml or 'GEE_PROJECT_ID' environment variable.")
             
         try:
             ee.Initialize(project=self.project_id)

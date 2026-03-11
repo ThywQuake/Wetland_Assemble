@@ -10,6 +10,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 _CONFIG_PATH = Path(__file__).parent.parent.parent.parent / "config" / "datasets.yaml"
+_GEE_CONFIG_PATH = Path(__file__).parent.parent.parent.parent / "config" / "gee_config.yaml"
 
 
 def load_dataset_config() -> Dict:
@@ -19,6 +20,18 @@ def load_dataset_config() -> Dict:
         return {"datasets": {}, "regions": {}, "analysis": {}}
 
     with open(_CONFIG_PATH, 'r') as f:
+        config = yaml.safe_load(f)
+
+    return config
+
+
+def load_gee_config() -> Dict:
+    """Load the Google Earth Engine configuration file."""
+    if not _GEE_CONFIG_PATH.exists():
+        logger.warning(f"GEE configuration file not found at {_GEE_CONFIG_PATH}")
+        return {"gee_project_id": None}
+
+    with open(_GEE_CONFIG_PATH, 'r') as f:
         config = yaml.safe_load(f)
 
     return config
