@@ -48,7 +48,7 @@ class GWD30TilingSystem:
     def parse_tile_code(self, tile_code: str) -> dict:
         """
         Parse tile code like '50TMK' or '01KAA'.
-        Returns: {zone: int, lat_band: str, square: str}
+        Returns: {zone: int, lat_band: str, square: str, hemisphere: str}
         """
         if len(tile_code) == 5:
             zone = int(tile_code[0:2])
@@ -63,6 +63,13 @@ class GWD30TilingSystem:
             
         # Determine hemisphere based on latitude band (C-M are S, N-X are N)
         hemisphere = "N" if lat_band.upper() >= "N" else "S"
+        
+        return {
+            "zone": zone,
+            "lat_band": lat_band,
+            "square": square,
+            "hemisphere": hemisphere
+        }
         
     def _mgrs_to_utm_origin(self, zone: int, square: str) -> Tuple[float, float]:
         """
@@ -118,6 +125,10 @@ class GWD30TilingSystem:
         # Project back to WGS84
         epsg_code = int(("326" if hem == "N" else "327") + f"{zone:02d}")
         transformer = self._get_transformer(epsg_code, inverse=True)
+        lon_min, lat_min = transformer.transform(x_min, y_min)
+        lon_max, lat_max = transformer.transform(x_max, y_max)
+        
+        return (lon_min, lat_min, lon_max, lat_max)
         
     def point_to_tile(self, lat: float, lon: float) -> str:
         """
