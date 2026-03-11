@@ -35,3 +35,8 @@ Spatial Range: Global
 | 12    | Coastal Swamp               |
 | 13    | Tidal Flat                  |
 | 14    | Shallow Marine Water        |
+
+## Data Profile
+
+{'driver': 'GTiff', 'dtype': 'uint8', 'nodata': 255.0, 'width': 3661, 'height': 3661, 'count': 92, 'crs': CRS.from_wkt('PROJCS["WGS 84 / UTM zone 1S",GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]]],PROJECTION["Transverse_Mercator"],PARAMETER["latitude_of_origin",0],PARAMETER["central_meridian",-177],PARAMETER["scale_factor",0.9996],PARAMETER["false_easting",500000],PARAMETER["false_northing",10000000],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["Easting",EAST],AXIS["Northing",NORTH]]'), 'transform': Affine(30.0, 0.0, 99945.0,
+       0.0, -30.0, 8100055.0), 'blockxsize': 512, 'blockysize': 512, 'tiled': True, 'compress': 'lzw', 'interleave': 'pixel'}

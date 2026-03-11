@@ -31,3 +31,17 @@ Any 25 km ×25 km grid cell that is observed to be greater than 99% arid as de
 ### E. Water Fraction Definition
 
 Prior versions of SWAMPS reported the estimated dynamics of nonpermanent surface water area, excluding water bodies and permanently inundated areas. In an effort to facilitate the use of this data set with complementary products, SWAMPSv3 includes all terrestrial water fractions within the fw retrieval. An ancillary data layer now includes the fractions of permanent water and permanently inundated areas so that they can be accounted for separately, if needed.
+
+## Data Profile
+
+<bound method Dataset.info of <xarray.Dataset> Size: 4MB
+ Dimensions:  (lat: 586, lon: 1383)
+ Coordinates:
+   * lat      (lat) float32 2kB 85.31 83.34 81.83 80.55 ... -81.83 -83.34 -85.31
+   * lon      (lon) float32 6kB -179.9 -179.6 -179.3 -179.1 ... 179.3 179.6 179.9
+ Data variables:
+     fw       (lat, lon) float32 3MB ...
+     flag     (lat, lon) int8 810kB ...
+ Attributes:
+     description:      Global SWAMPS inundation fraction projected in 25km EAS...
+     product_version:  3.2>,

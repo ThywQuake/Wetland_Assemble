@@ -49,3 +49,7 @@ GLWD v2 was developed by harmonizing the best available ground- and satellite-ba
 | 32 | Salt pan, saline/brackish wetland | 盐田、咸水/微咸水湿地 |
 | 33 | Rice paddies | 稻田 |
 | 00 | Dryland (non-wetland) | 旱地（非湿地） |
+
+## Data Profile
+{'driver': 'GTiff', 'dtype': 'uint8', 'nodata': 255.0, 'width': 86400, 'height': 33600, 'count': 1, 'crs': CRS.from_wkt('GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST]]'), 'transform': Affine(0.00416666666666667, 0.0, -180.0,
+       0.0, -0.00416666666666667, 84.00000000000011), 'blockxsize': 128, 'blockysize': 128, 'tiled': True, 'compress': 'lzw', 'interleave': 'band'}

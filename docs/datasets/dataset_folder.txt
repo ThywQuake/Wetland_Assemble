@@ -116,10 +116,6 @@
                 ... (same as above)
             2022/
                 ... (same as above)
-        LSTM/
-            prediction.nc
-        NRT/
-            fwet.nc
         SWAMPS/
             ancil/
                 PERMANENT_WATER_FRACTIONS_EASE25KM.nc
@@ -460,16 +456,3 @@
         WAD2M/
             data/
                 WAD2M_wetlands_2000-2020_025deg_Ver2.0.nc
-        wetland_season/
-            2015/
-                01KAA_wetland_2015_season.tif
-                01KAB_wetland_2015_season.tif
-                01KAU_wetland_2015_season.tif
-                01KAV_wetland_2015_season.tif
-                01LAC_wetland_2015_season.tif
-                01RCM_wetland_2015_season.tif
-                01RDM_wetland_2015_season.tif
-                01RGJ_wetland_2015_season.tif
-                01UBS_wetland_2015_season.tif
-                01UBT_wetland_2015_season.tif
-                ... (18433 more files)
