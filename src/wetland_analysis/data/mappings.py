@@ -114,6 +114,10 @@ def get_mapping(dataset_name: str, level: str = "coarse") -> Dict[int, int]:
     else:
         raise ValueError("Level must be 'coarse' or 'fine'.")
 
+# Backward compatibility aliases
+CONSENSUS_LABELS = COARSE_LABELS
+WETLAND_CONCORDANCE_MAP = COARSE_CONCORDANCE_MAP
+
 def get_labels(level: str = "coarse") -> Dict[int, str]:
     """Get labels for the specified classification level."""
     return COARSE_LABELS if level == "coarse" else FINE_LABELS

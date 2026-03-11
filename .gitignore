@@ -12,6 +12,7 @@ venv/
 data/raw/
 data/processed/
 data/results/
+config/datasets.yaml
 *.tif
 *.nc
 *.zip
@@ -25,9 +26,13 @@ data/results/
 # Jupyter
 .ipynb_checkpoints
 *-checkpoint.ipynb
+notebooks/
 
 # Project specific
 compound-engineering.local.md
 todos/
 docs/plans/
 docs/brainstorms/
+
+# Build artifacts
+dist/

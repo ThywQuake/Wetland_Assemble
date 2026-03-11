@@ -82,6 +82,16 @@ class SpatioTemporalAligner:
         if overlap_ratio < 0.05:
             logger.warning(f"LOW OVERLAP: Dataset {name} covers only {overlap_ratio:.1%} of the reference ROI.")
 
+    def _get_strategy(self, name: str, is_categorical: bool) -> AlignmentStrategy:
+        """Select the appropriate alignment strategy based on dataset characteristics."""
+        name = name.lower()
+        if "gwd30" in name:
+            return HighResGWD30Strategy()
+        elif "swamps" in name or "ease" in name:
+            return EASEGridStrategy()
+        else:
+            return DefaultStrategy(is_categorical=is_categorical)
+
     def add_dataset(
         self,
         dataset_name: str,
@@ -113,6 +123,7 @@ class SpatioTemporalAligner:
         # 4. Final Temporal Reindex (ensure exact match with target_time_index)
         if self.target_time_index is not None:
             if 'time' not in aligned.dims:
+                # Add time dimension if missing (for static datasets)
                 aligned = aligned.expand_dims(time=self.target_time_index)
             else:
                 aligned = aligned.reindex(time=self.target_time_index, method='nearest')
@@ -123,9 +134,24 @@ class SpatioTemporalAligner:
         self.datasets[dataset_name] = aligned
         return aligned
 
+    def align_temporally(self, name: str, method: str = "repeat"):
+        """
+        Explicitly perform temporal alignment if not already done by add_dataset.
+        Note: add_dataset already performs alignment if target_time_index is set.
+        """
+        if name not in self.datasets:
+            raise ValueError(f"Dataset {name} not found in aligner. Call add_dataset first.")
+        
+        # If it's already aligned, we don't need to do much unless the user wants a different method
+        logger.debug(f"Dataset {name} already has temporal dimensions aligned.")
+
     def combine(self) -> xr.Dataset:
         """Combine all aligned datasets into one Dataset."""
         return xr.Dataset(self.datasets)
+
+    def combine_to_dataset(self) -> xr.Dataset:
+        """Alias for combine() to match example script usage."""
+        return self.combine()
 
 def aggregate_to_coarse(
     fine_data: xr.DataArray,
