@@ -17,6 +17,9 @@ from .comparison import (
     calculate_agreement_metrics,
     analyze_spatial_patterns
 )
+from .uncertainty import calculate_shannon_entropy
+from .consensus import calculate_weighted_consensus
+from .pipeline import WetlandEnsemblePipeline
 
 __all__ = [
     # Accuracy assessment
@@ -33,4 +36,11 @@ __all__ = [
     "compare_datasets",
     "calculate_agreement_metrics",
     "analyze_spatial_patterns",
+
+    # Consensus and Uncertainty
+    "calculate_shannon_entropy",
+    "calculate_weighted_consensus",
+    
+    # End-to-end Pipeline
+    "WetlandEnsemblePipeline",
 ]
