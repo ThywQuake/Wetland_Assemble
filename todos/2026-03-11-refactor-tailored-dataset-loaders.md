@@ -9,4 +9,4 @@
 - [x] Implement `BerkeleyLoader` to parse dates from file paths
 - [x] Update `config.py` validations to support new yaml schema
 - [x] Ensure all loaders return standardised `lat`/`lon` coordinates
-- [ ] Write integration test verifying dataset loaders resolve correctly
+- [x] Write integration test verifying dataset loaders resolve correctly
