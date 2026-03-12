@@ -94,3 +94,58 @@ class GEEFetcher:
         task.start()
         logger.info(f"Export task started: {description}")
         return task
+        
+    def batch_fetch_hotspots(
+        self,
+        hotspots: List[Tuple[float, float, float, float]],
+        start_date: str,
+        end_date: str,
+        folder_name: str = "wetland_hotspots",
+        cloud_threshold: float = 0.6,
+        scale: int = 30
+    ) -> List[Any]:
+        """
+        Fetches Sentinel-2 composites for a list of hotspots and exports them to Drive.
+        
+        Args:
+            hotspots: List of bounding boxes [(min_lon, min_lat, max_lon, max_lat), ...].
+            start_date: Start date string (YYYY-MM-DD).
+            end_date: End date string (YYYY-MM-DD).
+            folder_name: Target folder name in Google Drive.
+            cloud_threshold: Threshold for CS+ cloud masking.
+            scale: Resolution scale in meters.
+            
+        Returns:
+            List of ee.batch.Task objects that were started.
+        """
+        tasks = []
+        for i, (min_lon, min_lat, max_lon, max_lat) in enumerate(hotspots):
+            logger.info(f"Submitting task for hotspot {i+1}/{len(hotspots)}")
+            # Convert simple coordinates to ee.Geometry
+            roi = ee.Geometry.Rectangle([min_lon, min_lat, max_lon, max_lat])
+            
+            # Fetch composite
+            image = self.get_sentinel2_image(
+                roi=roi,
+                start_date=start_date,
+                end_date=end_date,
+                cloud_threshold=cloud_threshold
+            )
+            
+            # Formulate a unique description based on coordinates
+            center_lat = (min_lat + max_lat) / 2.0
+            center_lon = (min_lon + max_lon) / 2.0
+            desc = f"hotspot_{i:03d}_{center_lat:.4f}_{center_lon:.4f}".replace('.', '_').replace('-', 'm')
+            
+            # Export
+            task = self.export_to_drive(
+                image=image,
+                description=desc,
+                folder=folder_name,
+                region=roi,
+                scale=scale
+            )
+            tasks.append(task)
+            
+        logger.info(f"Successfully submitted {len(tasks)} tasks to GEE.")
+        return tasks

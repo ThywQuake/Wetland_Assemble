@@ -20,6 +20,7 @@ from .comparison import (
 from .uncertainty import calculate_shannon_entropy
 from .consensus import calculate_weighted_consensus
 from .pipeline import WetlandEnsemblePipeline
+from .hotspots import HotspotAnalyzer
 
 __all__ = [
     # Accuracy assessment
@@ -43,4 +44,7 @@ __all__ = [
     
     # End-to-end Pipeline
     "WetlandEnsemblePipeline",
+    
+    # Hotspot extraction
+    "HotspotAnalyzer",
 ]
