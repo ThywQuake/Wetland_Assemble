@@ -123,6 +123,10 @@ def validate_config() -> List[str]:
         for field in required_fields:
             if field not in dataset_info:
                 errors.append(f"Dataset '{dataset_name}' missing required field: '{field}'")
+                
+        # Optional but recommended field
+        if 'loader_type' not in dataset_info:
+            logger.warning(f"Dataset '{dataset_name}' missing 'loader_type', will fallback to 'format'")
 
         # Check path configuration
         path = dataset_info.get('path', '')

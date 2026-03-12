@@ -1,23 +1,28 @@
 """
-Dataset loader for wetland datasets.
+Dataset loader factory for wetland datasets.
 """
 
-import xarray as xr
-import rasterio
-import rioxarray
-import geopandas as gpd
-import numpy as np
 import yaml
-import os
 from pathlib import Path
-from typing import Dict, List, Optional, Union, Tuple
+from typing import Dict, List, Optional, Union
 import logging
+
+# Import specific loaders
+from .loaders import (
+    BaseLoader,
+    GeoTIFFLoader,
+    NetCDFLoader,
+    GWD30Loader,
+    GLWDLoader,
+    TOPMODELLoader,
+    SWAMPSLoader,
+    BerkeleyLoader
+)
 
 logger = logging.getLogger(__name__)
 
 # Load dataset configuration
 _CONFIG_PATH = Path(__file__).parent.parent.parent.parent / "config" / "datasets.yaml"
-
 
 def load_dataset_config() -> Dict:
     """Load dataset configuration from YAML file."""
@@ -29,12 +34,10 @@ def load_dataset_config() -> Dict:
 
     return config
 
-
 def list_available_datasets() -> List[str]:
     """List all available wetland datasets from configuration."""
     config = load_dataset_config()
     return list(config.get('datasets', {}).keys())
-
 
 def get_dataset_info(dataset_name: str) -> Dict:
     """Get configuration information for a specific dataset."""
@@ -47,118 +50,60 @@ def get_dataset_info(dataset_name: str) -> Dict:
 
     return datasets[dataset_name]
 
+class LoaderRegistry:
+    """Registry mapping loader names to Loader instances."""
+    def __init__(self):
+        self._loaders: Dict[str, BaseLoader] = {
+            'netcdf': NetCDFLoader(),
+            'geotiff': GeoTIFFLoader(),
+            'gwd30': GWD30Loader(),
+            'glwd': GLWDLoader(),
+            'topmodel': TOPMODELLoader(),
+            'swamps': SWAMPSLoader(),
+            'berkeley': BerkeleyLoader(),
+        }
 
-import xarray as xr
-import rasterio
-import rioxarray
-import geopandas as gpd
-import numpy as np
-import yaml
-import os
-import glob
-from pathlib import Path
-from typing import Dict, List, Optional, Union, Tuple
-import logging
+    def get_loader(self, loader_type: str) -> BaseLoader:
+        loader = self._loaders.get(loader_type.lower())
+        if not loader:
+            raise ValueError(f"Unknown loader_type: {loader_type}. Available: {list(self._loaders.keys())}")
+        return loader
 
-logger = logging.getLogger(__name__)
-
-# Standard coordinate names for consistency
-COORD_MAP = {
-    'latitude': 'lat',
-    'longitude': 'lon',
-    'Latitude': 'lat',
-    'Longitude': 'lon',
-    'y': 'lat',
-    'x': 'lon'
-}
-
-def _standardize_coords(ds: Union[xr.Dataset, xr.DataArray]) -> Union[xr.Dataset, xr.DataArray]:
-    """Ensure dimensions are consistently named 'lat' and 'lon'."""
-    rename_dict = {old: new for old, new in COORD_MAP.items() if old in ds.dims}
-    if rename_dict:
-        logger.debug(f"Standardizing coordinates: {rename_dict}")
-        ds = ds.rename(rename_dict)
-    return ds
+# Global registry instance
+_REGISTRY = LoaderRegistry()
 
 def load_wetland_dataset(
     dataset_name: str,
-    year: Optional[int] = None,
-    month: Optional[int] = None,
-    variables: Optional[List[str]] = None
-) -> Union[xr.Dataset, xr.DataArray]:
+    **kwargs
+) -> Union['xr.Dataset', 'xr.DataArray']:
     """
-    Robustly load a wetland dataset with coordinate standardization and 
-    flexible file searching.
+    Robustly load a wetland dataset using tailored loaders based on config.
+    
+    Args:
+        dataset_name: Name of the dataset defined in config/datasets.yaml
+        **kwargs: Additional arguments passed to specific loaders (e.g., year, month, config, forcing, category)
     """
-    from .config import load_dataset_config
-    config = load_dataset_config()
-    dataset_info = config['datasets'].get(dataset_name.lower())
+    logger.info(f"Loading dataset: {dataset_name} with args: {kwargs}")
+    dataset_info = get_dataset_info(dataset_name.lower())
     
-    if not dataset_info:
-        raise ValueError(f"Dataset {dataset_name} not defined in config.")
-
-    data_format = dataset_info.get('format', '').lower()
-    base_path = Path(dataset_info['path'])
-
-    if data_format == 'netcdf':
-        data = _load_netcdf_robust(base_path, dataset_info, year, month, variables)
-    elif data_format == 'geotiff':
-        data = _load_geotiff_robust(base_path, dataset_info, year, month)
-    else:
-        raise ValueError(f"Unsupported format: {data_format}")
-
-    return _standardize_coords(data)
-
-def _load_netcdf_robust(base_path: Path, info: Dict, year: int, month: int, variables: List[str]) -> xr.Dataset:
-    pattern = info.get('pattern', '*.nc')
+    # Determine loader type from config, fallback to basic format
+    loader_type = dataset_info.get('loader_type', dataset_info.get('format', '').lower())
     
-    # Handle nested SWAMPS-like structure: YYYY/MM/*.nc
-    if year and month:
-        search_path = base_path / f"{year}" / f"{month:02d}" / pattern.replace('{year}', str(year)).replace('{month}', f'{month:02d}')
-    elif year:
-        search_path = base_path / f"{year}" / "**" / pattern.replace('{year}', str(year))
-    else:
-        search_path = base_path / "**" / pattern
-
-    files = glob.glob(str(search_path), recursive=True)
-    if not files:
-        # Fallback to direct path if pattern parsing fails
-        if 'file' in info:
-            files = [str(base_path / info['file'])]
-        else:
-            raise FileNotFoundError(f"No files found for {info['name']} at {search_path}")
-
-    logger.info(f"Loading {len(files)} files for {info['name']}")
-    ds = xr.open_mfdataset(files, combine='by_coords', chunks={'lat': 1000, 'lon': 1000})
+    loader = _REGISTRY.get_loader(loader_type)
+    data = loader.load(dataset_info, **kwargs)
     
-    if variables:
-        ds = ds[variables]
-    return ds
-
-def _load_geotiff_robust(base_path: Path, info: Dict, year: int, month: int) -> xr.DataArray:
-    # GWD30 annual pattern or static files
-    if 'pattern' in info and year:
-        file_path = str(base_path / info['pattern'].replace('{year}', str(year)))
-    elif 'files' in info:
-        file_key = 'wetland' if 'wetland' in info['files'] else list(info['files'].keys())[0]
-        file_path = str(base_path / info['files'][file_key])
-    else:
-        # Just find any tif in the directory
-        files = list(base_path.glob("*.tif"))
-        if not files: raise FileNotFoundError(f"No TIFF files in {base_path}")
-        file_path = str(files[0])
-
-    da = rioxarray.open_rasterio(file_path, chunks=True)
-    if da.ndim > 2:
-        da = da.squeeze()
-    return da
-
+    if not validate_dataset_loaded(data, dataset_name):
+        raise RuntimeError(f"Failed to validate loaded dataset: {dataset_name}")
+        
+    return data
 
 def validate_dataset_loaded(
-    data: Union[xr.Dataset, xr.DataArray],
+    data: Union['xr.Dataset', 'xr.DataArray'],
     dataset_name: str
 ) -> bool:
     """Validate that dataset was loaded correctly."""
+    # Ensure xarray is available for type checking if needed
+    import xarray as xr
     if isinstance(data, xr.Dataset):
         if len(data.data_vars) == 0:
             logger.error(f"Dataset {dataset_name} loaded but contains no data variables")
@@ -171,5 +116,5 @@ def validate_dataset_loaded(
         logger.error(f"Unknown data type for {dataset_name}: {type(data)}")
         return False
 
-    logger.info(f"Successfully loaded dataset: {dataset_name}")
+    logger.info(f"Successfully validated dataset: {dataset_name}")
     return True
